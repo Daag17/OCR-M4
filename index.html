@@ -1,32 +1,28 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles.css" />
     <title>OCR - MAS 4</title>
-</head>
-<body>
+  </head>
+  <body>
     <header>
-        <h1>OCR Online Tool</h1>
+      <h1>OCR Online Tool</h1>
     </header>
     <main>
-        <h2>Upload your PDF here!</h2>
-        <form>
-            <input type="file" id="pdf-upload" accept=".pdf" required>
-            <button type="submit">Upload</button>
-        </form>
-        <h3 id="system-status" hidden>OCR ready to work! ✅</h3>
-        <div id="status" hidden>
-            <h2>Progress</h2>
-            <span id="test"></span>
-            <progress id="progress-bar" value="0" max="100"></progress>
-        </div>
-        <section id="download-section" hidden>
-            <h2>Download your PDF with OCR here!</h2>
-            <button id="download-btn" disabled>Download OCR PDF</button>
-        </section>
+      <h2>Upload your PDF here!</h2>
+      <form>
+        <input type="file" id="pdf-upload" accept=".pdf" required />
+        <button type="submit">Upload</button>
+      </form>
+      <h3 id="system-status" hidden>OCR ready to work! ✅</h3>
+      <progress id="progress-bar" value="0" max="100" hidden></progress>
+      <section id="download-section" hidden>
+        <h2>Download your PDF with OCR here!</h2>
+        <button id="download-btn" disabled>Download PDF</button>
+      </section>
     </main>
     <script type="module" src="main.js"></script>
-</body>
+  </body>
 </html>

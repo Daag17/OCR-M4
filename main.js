@@ -1,21 +1,23 @@
 import * as pdfjsLib from "./libs/pdf.min.js";
-import { PDFDocument, rgb } from "./libs/pdf-lib.min.js";
+import { error, PDFDocument, rgb } from "./libs/pdf-lib.min.js";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdf.worker.min.js";
 
 const uploadButton = document.querySelector('button[type="submit"]');
-const worker = new Worker("./ocr.worker.js", { type: "module" });
 const progressBar = document.getElementById("progress-bar");
 const systemStatus = document.getElementById("system-status");
 const scale = 2.5;
 
-let initialized = false;
+let initialized = true;
 let pdfDoc;
 let totalPages = 0;
 let processedPages = 0;
 
-worker.addEventListener("error", (error) => {
-  console.error("ERROR EN WORKER:", error);
-});
+let workerPool = [];
+let workerCount = 0;
+let pageQueue = [];
+let activeWorkers = 0;
+let pdfInstance = null;
+let readyWorkers = 0;
 
 uploadButton.addEventListener("click", async (event) => {
   event.preventDefault();
@@ -32,7 +34,10 @@ uploadButton.addEventListener("click", async (event) => {
       uploadButton.style.backgroundColor = "gray";
       uploadButton.style.cursor = "not-allowed";
       fileInput.disabled = true;
-      worker.postMessage({ type: "process", file });
+      progressBar.hidden = false;
+      systemStatus.hidden = false;
+      systemStatus.textContent = "Processing PDF... Please wait.";
+
       const originalBuffer = await file.arrayBuffer();
 
       const bufferForPdfJs = originalBuffer.slice(0);
@@ -42,88 +47,167 @@ uploadButton.addEventListener("click", async (event) => {
 
       pdfDoc = await PDFDocument.load(bufferForPdfLib);
 
+      pdfInstance = pdf;
       totalPages = pdf.numPages;
-      processedPages = 0;
+      pageQueue = Array.from({ length: totalPages }, (_, i) => i);
 
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-
-        const viewport = page.getViewport({ scale: scale });
-
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({
-          canvasContext: context,
-          viewport: viewport,
-        }).promise;
-
-        const blob = await new Promise((resolve) =>
-          canvas.toBlob(resolve, "image/png"),
-        );
-
-        worker.postMessage({ type: "ocr", image: blob, pageIndex: i - 1 });
-      }
+      createWorkerPool();
     }
   }
 });
 
-worker.onmessage = async (event) => {
-  if (!initialized) {
-    if (event.data.type === "ready") {
-      initialized = true;
-      systemStatus.hidden = false;
-    } else if (event.data.type === "error") {
-      console.error("Worker error:", event.data.message);
-      alert("Error initializing OCR: " + event.data.message);
-      systemStatus.hidden = true;
-      systemStatus.textContent = "Error initializing OCR system.";
-    }
-  } else {
-    if (event.data.type === "textOutput") {
-      const { pageIndex, words } = event.data;
+function calculateWorkerCount() {
+  const cores = navigator.hardwareConcurrency || 2;
+  if (cores <= 2) return 1;
+  if (cores <= 4) return 2;
+  if (cores <= 8) return 3;
+  return 4; // máximo de 4 workers para evitar sobrecarga
+}
 
-      const pages = pdfDoc.getPages();
-      const page = pages[pageIndex];
+async function handleWorkerMessage(event) {
+  if (event.data.type === "ready") {
+    readyWorkers++;
 
-      const { height } = page.getSize();
-
-      words.forEach((word) => {
-        const { x0, y0, x1, y1 } = word.bbox;
-
-        const pdfX = x0 / scale;
-        const pdfY = height - y1 / scale;
-        const fontSize = ((y1 - y0) / scale) * 0.85;
-
-        page.drawText(word.text, {
-          x: pdfX,
-          y: pdfY,
-          size: fontSize,
-          opacity: 0,
-        });
-      });
-
-      processedPages++;
-
-      if (processedPages === totalPages) {
-        const pdfBytes = await pdfDoc.save();
-
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "ocr-searchable.pdf";
-        a.click();
+    if (readyWorkers === workerCount) {
+      for (let i = 0; i < workerCount; i++) {
+        dispatchNextPage();
       }
     }
-  }
-};
 
-function showItems(idItem) {
-  const item = document.getElementById(idItem);
-  item.hidden = !item.hidden;
+    return;
+  }
+
+  if (event.data.type === "textOutput") {
+    const { pageIndex, words, workerId } = event.data;
+    const pages = pdfDoc.getPages();
+    const page = pages[pageIndex];
+
+    const { height } = page.getSize();
+
+    words.forEach((word) => {
+      const { x0, y0, x1, y1 } = word.bbox;
+
+      const pdfX = x0 / scale;
+      const pdfY = height - y1 / scale;
+      const fontSize = ((y1 - y0) / scale) * 0.85;
+
+      page.drawText(word.text, {
+        x: pdfX,
+        y: pdfY,
+        size: fontSize,
+        opacity: 0,
+      });
+    });
+    processedPages++;
+    activeWorkers--;
+    workerPool[workerId].busy = false;
+
+    updateProgress();
+
+    if (processedPages % 40 === 0) {
+      console.log("Limpiando memoria de PDF.js");
+      for (let i = 0; i < workerPool.length; i++) {
+        workerPool[i].terminate();
+      }
+      workerPool = [];
+      readyWorkers = 0;
+      activeWorkers = 0;
+      createWorkerPool();
+    } else {
+      dispatchNextPage();
+    }
+
+    if (processedPages === totalPages) {
+      await finalizePDF();
+    }
+  }
+}
+
+function createWorkerPool() {
+  workerCount = calculateWorkerCount();
+
+  for (let i = 0; i < workerCount; i++) {
+    const w = new Worker("./ocr.worker.js", { type: "module" });
+
+    console.log("Worker creado:", i);
+
+    w.busy = false;
+    w.id = i;
+
+    w.addEventListener("message", handleWorkerMessage);
+
+    w.onerror = (error) => {
+      console.error(`Error in worker ${w.id}:`, error);
+    };
+
+    workerPool.push(w);
+
+    w.postMessage({ type: "id", id: i });
+  }
+}
+
+async function dispatchNextPage() {
+  console.log("dispatchNextPage ejecutado");
+  console.log("Cola actual:", pageQueue.length);
+
+  if (pageQueue.length === 0) return;
+
+  const freeWorker = workerPool.find((w) => !w.busy);
+  if (!freeWorker) return;
+
+  const pageIndex = pageQueue.shift();
+  freeWorker.busy = true;
+  activeWorkers++;
+
+  const page = await pdfInstance.getPage(pageIndex + 1);
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+
+  await page.render({
+    canvasContext: context,
+    viewport,
+  }).promise;
+
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, "image/png"),
+  );
+
+  // Limpia el canvas para liberar memoria
+  canvas.width = 0;
+  canvas.height = 0;
+  canvas.remove();
+
+  freeWorker.postMessage({ type: "ocr", image: blob, pageIndex });
+
+  console.log(
+    `Dispatched page ${pageIndex + 1} to worker ${freeWorker.id}. Active workers: ${activeWorkers}`,
+  );
+}
+
+function updateProgress() {
+  const percent = Math.round((processedPages / totalPages) * 100);
+  progressBar.value = percent;
+}
+
+async function finalizePDF() {
+  const pdfBytes = await pdfDoc.save();
+
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+
+  systemStatus.textContent =
+    "OCR process completed! You can download the searchable PDF. 👍";
+  document.getElementById("download-section").hidden = false;
+  document.getElementById("download-btn").disabled = false;
+  document.getElementById("download-btn").onclick = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ocr-searchable.pdf";
+    a.click();
+  };
 }
