@@ -20,7 +20,6 @@ initializeTesseract();
 self.onmessage = async (event) => {
   if (event.data.type === "id") {
     id = event.data.id;
-    console.log(`Worker ${id} initialized.`);
   }
   if (event.data.type === "ocr") {
     let { image, pageIndex } = event.data;

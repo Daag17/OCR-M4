@@ -105,7 +105,6 @@ async function handleWorkerMessage(event) {
     updateProgress();
 
     if (processedPages % 40 === 0) {
-      console.log("Limpiando memoria de PDF.js");
       for (let i = 0; i < workerPool.length; i++) {
         workerPool[i].terminate();
       }
@@ -128,9 +127,6 @@ function createWorkerPool() {
 
   for (let i = 0; i < workerCount; i++) {
     const w = new Worker("./ocr.worker.js", { type: "module" });
-
-    console.log("Worker creado:", i);
-
     w.busy = false;
     w.id = i;
 
@@ -147,9 +143,6 @@ function createWorkerPool() {
 }
 
 async function dispatchNextPage() {
-  console.log("dispatchNextPage ejecutado");
-  console.log("Cola actual:", pageQueue.length);
-
   if (pageQueue.length === 0) return;
 
   const freeWorker = workerPool.find((w) => !w.busy);
@@ -183,10 +176,6 @@ async function dispatchNextPage() {
   canvas.remove();
 
   freeWorker.postMessage({ type: "ocr", image: blob, pageIndex });
-
-  console.log(
-    `Dispatched page ${pageIndex + 1} to worker ${freeWorker.id}. Active workers: ${activeWorkers}`,
-  );
 }
 
 function updateProgress() {
@@ -199,6 +188,14 @@ async function finalizePDF() {
 
   const blob = new Blob([pdfBytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
+
+  // Terminar todos los workers
+  for (let i = 0; i < workerPool.length; i++) {
+    workerPool[i].terminate();
+  }
+  workerPool = [];
+  readyWorkers = 0;
+  activeWorkers = 0;
 
   systemStatus.textContent =
     "OCR process completed! You can download the searchable PDF. 👍";
