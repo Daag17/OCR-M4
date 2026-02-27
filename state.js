@@ -7,6 +7,7 @@ let state = {
   processedPages: 0,
   progress: 0,
   startTime: null,
+  downloadUrl: null,
   error: null,
 };
 
