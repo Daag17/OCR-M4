@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="stylesnew.css" />
+    <title>OCR TOOL - MAS 4 AVIATION</title>
+  </head>
+  <body>
+    <header>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="lucide lucide-scan-text-icon lucide-scan-text"
+      >
+        <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+        <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+        <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+        <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+        <path d="M7 8h8" />
+        <path d="M7 12h10" />
+        <path d="M7 16h6" />
+      </svg>
+      <div class="title">
+        <h1>OCR TOOL</h1>
+        <p class="lightfont">Make your documents readable</p>
+      </div>
+    </header>
+    <main>
+      <div class="card" id="mainCard">
+        <!-- View 1 - Upload document-->
+        <div id="view-dropzone">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-upload-icon lucide-upload"
+          >
+            <path d="M12 3v12" />
+            <path d="m17 8-5-5-5 5" />
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          </svg>
+          <p>
+            <strong>Drag and drop your PDF file here</strong><br />or click to
+            select a file.
+          </p>
+          <input type="file" id="fileInput" accept=".pdf" />
+        </div>
+        <!-- View 2 - File Preview-->
+        <div id="view-file" hidden>
+          <div id="file-preview">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-file-text-icon lucide-file-text"
+            >
+              <path
+                d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"
+              />
+              <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+              <path d="M10 9H8" />
+              <path d="M16 13H8" />
+              <path d="M16 17H8" />
+            </svg>
+            <div id="file-meta">
+              <h3 id="fileNamePreview">File.pdf</h3>
+              <div id="file-info">
+                <p id="fileSizePreview">40.0 MB</p>
+                <p id="filePagesPreview">150 pages</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="processBtn">Process Document</button>
+            <button id="changeFileBtn">Change File</button>
+          </div>
+        </div>
+        <!-- View 3 - Processing -->
+        <div id="view-processing" hidden>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-file-text-icon lucide-file-text"
+          >
+            <path
+              d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"
+            />
+            <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+            <path d="M10 9H8" />
+            <path d="M16 13H8" />
+            <path d="M16 17H8" />
+          </svg>
+          <h3 id="processingFileName">File.pdf</h3>
+          <p>Processing your document, please wait...</p>
+
+          <div class="progress-contaier">
+            <div class="progress-bar">
+              <div id="progressFill"></div>
+            </div>
+            <span id="progressPercent">0%</span>
+          </div>
+        </div>
+        <!-- View 4 - Completed -->
+        <div id="view-completed" hidden>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-file-check-icon lucide-file-check"
+          >
+            <path
+              d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"
+            />
+            <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+            <path d="m9 15 2 2 4-4" />
+          </svg>
+          <h3 id="completedFileName">File.pdf</h3>
+          <p>Your document has been processed successfully!</p>
+
+          <div class="actions">
+            <button id="downloadBtn">Download Processed File</button>
+            <button id="newFileBtn">Process Another File</button>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer>
+      <p class="lightfont">Files are processed locally in your browser.</p>
+      <p><small>© 2026 MAS 4 Aviation</small></p>
+    </footer>
+    <script type="module" src="ui.js"></script>
+  </body>
+</html>

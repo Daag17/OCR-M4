@@ -1,5 +1,6 @@
 import * as pdfjsLib from "./libs/pdf.min.js";
 import { error, PDFDocument, rgb } from "./libs/pdf-lib.min.js";
+import { setState } from "./state.js";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdf.worker.min.js";
 
 const uploadButton = document.querySelector('button[type="submit"]');
