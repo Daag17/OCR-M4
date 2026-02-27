@@ -9,6 +9,14 @@ async function initializeTesseract() {
   try {
     tesseractWorker = await Tesseract.createWorker("eng");
     tesseractReady = true;
+
+    await tesseractWorker.setParameters({
+      tessedit_ocr_engine_mode: 1,
+      tessedit_pageseg_mode: 1,
+      user_defined_dpi: 300,
+      preserve_interword_spaces: 1,
+    });
+
     postMessage({ type: "ready" });
   } catch (error) {
     console.error("Error initializing Tesseract.js:", error);

@@ -1,6 +1,6 @@
 import * as pdfjsLib from "./libs/pdf.min.js";
 import { PDFDocument } from "./libs/pdf-lib.min.js";
-import { setState } from "./state.js";
+import { setState, getState } from "./state.js";
 
 /**
  * Configuración de pdf.js
@@ -12,7 +12,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.min.js";
  * Escala usada para renderizar páginas a imagen.
  * Debe mantenerse consistente con la conversión de coordenadas al insertar texto.
  */
-const RENDER_SCALE = 2.5;
+const RENDER_SCALE = 3;
 
 /**
  * Estado interno del engine.
@@ -64,6 +64,12 @@ export async function processPDF(file) {
     pageQueue = Array.from({ length: totalPages }, (_, i) => i);
 
     createWorkerPool();
+
+    if (window.gtag) {
+      gtag("event", "ocr_started", {
+        pages: totalPages,
+      });
+    }
   } catch (error) {
     console.error("OCR Engine error:", error);
 
@@ -178,15 +184,18 @@ async function handleOCRResult({ pageIndex, words, workerId }) {
 
   updateProgress();
 
-  // Reinicio preventivo de workers cada 40 páginas
+  // Si ya no quedan páginas pendientes y no hay workers activos,
+  // entonces realmente terminamos.
+  if (pageQueue.length === 0 && activeWorkers === 0) {
+    await finalizePDF();
+    return;
+  }
+
+  // Reinicio preventivo cada 40 páginas
   if (processedPages % 40 === 0) {
     restartWorkerPool();
   } else {
     dispatchNextPage();
-  }
-
-  if (processedPages === totalPages) {
-    await finalizePDF();
   }
 }
 
@@ -221,6 +230,9 @@ async function dispatchNextPage() {
     viewport,
   }).promise;
 
+  // Aplicar preprocesamiento antes de enviar al worker
+  preprocessCanvas(context, canvas.width, canvas.height);
+
   const blob = await new Promise((resolve) =>
     canvas.toBlob(resolve, "image/png"),
   );
@@ -234,6 +246,43 @@ async function dispatchNextPage() {
 }
 
 /* ======================================================
+   Preprocesamiento de imagen
+====================================================== */
+
+function preprocessCanvas(context, width, height) {
+  const imageData = context.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  let min = 255;
+  let max = 0;
+
+  // Paso 1: convertir a grayscale y detectar rango dinámico
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+
+    data[i] = data[i + 1] = data[i + 2] = gray;
+
+    if (gray < min) min = gray;
+    if (gray > max) max = gray;
+  }
+
+  // Paso 2: normalización de contraste
+  const range = max - min || 1;
+
+  for (let i = 0; i < data.length; i += 4) {
+    let normalized = ((data[i] - min) / range) * 255;
+
+    // Paso 3: threshold suave (no agresivo)
+    if (normalized > 200) normalized = 255;
+    if (normalized < 40) normalized = 0;
+
+    data[i] = data[i + 1] = data[i + 2] = normalized;
+  }
+
+  context.putImageData(imageData, 0, 0);
+}
+
+/* ======================================================
    PROGRESO Y FINALIZACIÓN
 ====================================================== */
 
@@ -241,11 +290,24 @@ async function dispatchNextPage() {
  * Actualiza el estado global con el progreso actual.
  */
 function updateProgress() {
+  const now = Date.now();
+  const elapsed = now - getState().startTime;
+
   const percent = Math.round((processedPages / totalPages) * 100);
+
+  let eta = null;
+
+  if (processedPages > 0) {
+    const avgTimePerPage = elapsed / processedPages;
+    const remainingPages = totalPages - processedPages;
+    eta = Math.round((avgTimePerPage * remainingPages) / 1000);
+  }
 
   setState({
     progress: percent,
     processedPages,
+    elapsedTime: Math.round(elapsed / 1000),
+    eta,
   });
 }
 
@@ -264,6 +326,13 @@ async function finalizePDF() {
   });
 
   cleanupWorkers();
+
+  if (window.gtag) {
+    gtag("event", "ocr_completed", {
+      pages: totalPages,
+      duration: Math.round((Date.now() - getState().startTime) / 1000),
+    });
+  }
 }
 
 /* ======================================================

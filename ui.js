@@ -190,7 +190,13 @@ function processingTemplate(state) {
         <div class="progress-bar">
           <div class="progress-fill" style="width:${state.progress}%"></div>
         </div>
+
         <span>${state.progress}%</span>
+
+        <div class="time-info">
+        <span>Elapsed: ${formatTime(state.elapsedTime)}</span>
+        ${state.eta !== null ? `<span>ETA: ${formatTime(state.eta)}</span>` : ""}
+        </div>
       </div>
     </div>
   `;
@@ -369,6 +375,7 @@ function attachEventsForState(state) {
 function updateProgressUI(state) {
   const fill = document.querySelector(".progress-fill");
   const percent = document.querySelector(".progress span");
+  const timeInfo = document.querySelector(".time-info");
 
   if (fill) {
     fill.style.width = state.progress + "%";
@@ -377,4 +384,21 @@ function updateProgressUI(state) {
   if (percent) {
     percent.textContent = state.progress + "%";
   }
+
+  if (timeInfo) {
+    timeInfo.innerHTML = `
+      <span>Elapsed: ${formatTime(state.elapsedTime)}</span>
+      ${state.eta !== null ? `<span>ETA: ${formatTime(state.eta)}</span>` : ""}
+    `;
+  }
+}
+
+function formatTime(seconds) {
+  if (!seconds) return "0s";
+
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+
+  if (m === 0) return `${s}s`;
+  return `${m}m ${s}s`;
 }
