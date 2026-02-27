@@ -4,25 +4,58 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="styles.css" />
-    <title>OCR - MAS 4</title>
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-FS34Y2YE4K"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-FS34Y2YE4K");
+    </script>
+    <title>OCR TOOL - MAS 4 AVIATION</title>
   </head>
   <body>
     <header>
-      <h1>OCR Online Tool</h1>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="lucide lucide-scan-text-icon lucide-scan-text"
+      >
+        <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+        <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+        <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+        <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+        <path d="M7 8h8" />
+        <path d="M7 12h10" />
+        <path d="M7 16h6" />
+      </svg>
+      <div class="title">
+        <h1>OCR TOOL</h1>
+        <p class="lightfont">Make your documents readable</p>
+      </div>
     </header>
     <main>
-      <h2>Upload your PDF here!</h2>
-      <form>
-        <input type="file" id="pdf-upload" accept=".pdf" required />
-        <button type="submit">Upload</button>
-      </form>
-      <h3 id="system-status" hidden>OCR ready to work! ✅</h3>
-      <progress id="progress-bar" value="0" max="100" hidden></progress>
-      <section id="download-section" hidden>
-        <h2>Download your PDF with OCR here!</h2>
-        <button id="download-btn" disabled>Download PDF</button>
-      </section>
+      <div class="card">
+        <div id="cardContent"></div>
+      </div>
     </main>
-    <script type="module" src="main.js"></script>
+    <footer>
+      <p class="lightfont">Files are processed locally in your browser.</p>
+      <p><small>© 2026 MAS 4 Aviation</small></p>
+    </footer>
+    <script type="module" src="ui.js"></script>
   </body>
 </html>
